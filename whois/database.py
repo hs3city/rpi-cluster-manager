@@ -6,7 +6,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 db = pw.SqliteDatabase(os.environ.get("DB_PATH", "whoisdevices.db"))
 
-
+# TODO change
 class User(pw.Model):
     id = pw.PrimaryKeyField()
     username = pw.CharField(unique=True)
@@ -72,7 +72,7 @@ class User(pw.Model):
     def auth(self, password):
         return check_password_hash(self.password, password)
 
-
+# TODO change
 class Device(pw.Model):
     mac_address = pw.FixedCharField(primary_key=True, unique=True, max_length=17)
     hostname = pw.CharField(null=True)

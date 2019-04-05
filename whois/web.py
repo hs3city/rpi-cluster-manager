@@ -101,7 +101,7 @@ def index():
         **common_vars_tpl
     )
 
-
+# TODO change/remove
 @login_required
 @app.route("/devices")
 def devices():
@@ -122,7 +122,7 @@ def devices():
             **common_vars_tpl
         )
 
-
+# TODO change/remove
 @app.route("/api/now", methods=["GET"])
 def now_at_space():
     """
@@ -149,7 +149,7 @@ def now_at_space():
 
     return jsonify(data)
 
-
+# TODO change/remove
 @app.route("/api/last_seen", methods=["POST"])
 def last_seen_devices():
     """
@@ -190,7 +190,7 @@ def last_seen_devices():
         app.logger.warning("request from outside whitelist: {}".format(ip_addr))
         return abort(403)
 
-
+# TODO remove - helper function
 def set_device_flags(device, new_flags):
     if device.owner is not None and device.owner.get_id() != current_user.get_id():
         app.logger.error("no permission for {}".format(current_user.username))
@@ -208,7 +208,7 @@ def set_device_flags(device, new_flags):
     )
     flash("Flags set".format(device.mac_address), "info")
 
-
+# TODO change
 @app.route("/device/<mac_address>", methods=["GET", "POST"])
 @login_required
 @in_space_required()
@@ -234,7 +234,7 @@ def device_view(mac_address):
 
     return render_template("device.html", device=device, **common_vars_tpl)
 
-
+# TODO remove - helper function
 def claim_device(device):
     if device.owner is not None:
         app.logger.error("no permission for {}".format(current_user.username))
@@ -245,7 +245,7 @@ def claim_device(device):
     app.logger.info("{} claim {}".format(current_user.username, device.mac_address))
     flash("Claimed {}!".format(device.mac_address), "success")
 
-
+# TODO remove - helper function
 def unclaim_device(device):
     if device.owner is not None and device.owner.get_id() != current_user.get_id():
         app.logger.error("no permission for {}".format(current_user.username))
@@ -256,7 +256,7 @@ def unclaim_device(device):
     app.logger.info("{} unclaim {}".format(current_user.username, device.mac_address))
     flash("Unclaimed {}!".format(device.mac_address), "info")
 
-
+# TODO change
 @app.route("/register", methods=["GET", "POST"])
 @in_space_required()
 def register():
@@ -329,7 +329,7 @@ def logout():
     flash("Logged out.", "info")
     return redirect(url_for("index"))
 
-
+# TODO change
 @app.route("/profile", methods=["GET", "POST"])
 @login_required
 def profile_edit():

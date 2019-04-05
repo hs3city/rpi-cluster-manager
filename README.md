@@ -13,6 +13,15 @@
 pipenv install
 ```
 
+- Create .env file
+
+```shell
+cat >> .env <<EOF
+PYTHONPATH=.
+SECRET_KEY=<your_secret_key>'
+EOF
+```
+
 - Create database
 
 ```shell

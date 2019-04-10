@@ -80,36 +80,12 @@ class Device(pw.Model):
     owner = pw.ForeignKeyField(
         User, backref="devices", column_name="user_id", null=True
     )
-    flags = pw.BitField(null=True)
-
-    is_hidden = flags.flag(1)
-    is_new = flags.flag(2)
-    is_infrastructure = flags.flag(4)
-    is_esp = flags.flag(8)
-    is_laptop = flags.flag(16)
 
     class Meta:
         database = db
 
     def __str__(self):
         return self.mac_address
-
-    @classmethod
-    def get_recent(cls, days=0, hours=0, minutes=30, seconds=0):
-        """
-        Returns list of last connected devices
-        :param hours:
-        :param minutes:
-        :param seconds:
-        :return: list of devices
-        """
-        recent_time = datetime.now() - timedelta(
-            days=days, hours=hours, minutes=minutes, seconds=seconds
-        )
-        devices = list(
-            cls.select().where(cls.last_seen > recent_time).order_by(cls.last_seen)
-        )
-        return devices
 
     @classmethod
     def update_or_create(cls, mac_address, last_seen, hostname=None):

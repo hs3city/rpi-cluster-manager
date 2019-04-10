@@ -101,24 +101,30 @@ def index():
         **common_vars_tpl
     )
 
+from collections import namedtuple
+_Device = namedtuple("_Device", ['mac_address', 'hostname', 'owner'])
+
 # TODO change/remove
 @login_required
 @app.route("/devices")
 def devices():
-    recent = Device.get_recent(**settings.recent_time)
-    visible_devices = filter_hidden(recent)
-    users = filter_hidden(owners_from_devices(visible_devices))
+    the_devices = [
+        _Device('FF:FF:FF:FF:FF:FF', 'dupa0', 1),
+        _Device('FF:FF:FF:FF:FF:FF', 'dupa1', 1),
+        _Device('FF:FF:FF:FF:FF:FF', 'dupa2', 1),
+        _Device('FF:FF:FF:FF:FF:FF', 'dupa3', 1),
+        _Device('FF:FF:FF:FF:FF:FF', 'dupa4', 1),
+    ]
 
     if current_user.is_authenticated:
-        unclaimed = unclaimed_devices(recent)
         mine = current_user.devices
         return render_template(
             "devices.html",
-            unclaimed=unclaimed,
-            recent=recent,
-            my_devices=mine,
-            users=filter_anon_names(users),
-            headcount=len(users),
+            unclaimed=[],
+            recent=[],
+            my_devices=the_devices,
+            users=[],
+            headcount=0,
             **common_vars_tpl
         )
 

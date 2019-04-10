@@ -28,29 +28,18 @@
             <a href="/device/{{ device.mac_address }}">{{ device.mac_address }}</a>
         </td>
         <td>{{ device.hostname }}</td>
-        <td>{{ flag_badge(device.is_hidden, 'hidden') }}{{ flag_badge(device.is_esp, 'esp') }}{{ flag_badge(device.is_infrastructure, 'infrastructure') }}</td>
+        <td></td>
         <td>{{ owner }}</td>
-        <td>{{ device.last_seen.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+        <td></td>
     </tr>
 {%- endmacro %}
 
 
 {% block content %}
-    <h2>Status</h2>
-    <p class="lead">
-        There are {{ headcount }} carbon-based lifeforms in HS
-        according to our measurements.
-    </p>
-    <ul>
-        {% for user in users %}
-            <li>{{ user }}</li>
-        {% endfor %}
-    </ul>
     {% if current_user.is_authenticated %}
-        <h2>Recent devices</h2>
         <div class="table-responsive">
+        <h2>My Devices</h2>
         <table class="table">
-            {% set header_row -%}
             <tr>
                 <th>MAC</th>
                 <th>hostname</th>
@@ -58,25 +47,6 @@
                 <th>ownership</th>
                 <th>last seen</th>
             </tr>
-            {%- endset %}
-            {{ header_row }}
-            {% for device in recent -%}
-                {% if device.owner is none -%}
-                    {{ device_row(device, owner=claim_btn(device.mac_address)) }}
-                {% else %}
-                    {{ device_row(device, owner=user_wiki(device.owner)) }}
-                {%- endif %}
-            {%- endfor %}
-            <tr>
-                <th>
-                    <h2>My devices</h2>
-                </th>
-                <th></th>
-                <th></th>
-                <th></th>
-                <th></th>
-            </tr>
-            {{ header_row }}
             {% for device in my_devices -%}
                 {{ device_row(device, owner=unclaim_btn(device.mac_address)) }}
             {%- endfor %}

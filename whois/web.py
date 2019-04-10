@@ -101,6 +101,7 @@ def index():
         **common_vars_tpl
     )
 
+
 from collections import namedtuple
 _Device = namedtuple("_Device", ['mac_address', 'hostname', 'owner'])
 
@@ -109,10 +110,10 @@ _Device = namedtuple("_Device", ['mac_address', 'hostname', 'owner'])
 @app.route("/devices")
 def devices():
     the_devices = [
-        _Device('FF:FF:FF:FF:FF:FF', 'dupa0', 1),
-        _Device('FF:FF:FF:FF:FF:FF', 'dupa1', 1),
-        _Device('FF:FF:FF:FF:FF:FF', 'dupa2', 1),
-        _Device('FF:FF:FF:FF:FF:FF', 'dupa3', 1),
+        _Device('FF:FF:FF:FF:FF:FA', 'dupa0', 1),
+        _Device('FF:FF:FF:FF:FF:FB', 'dupa1', 1),
+        _Device('FF:FF:FF:FF:FF:FC', 'dupa2', 1),
+        _Device('FF:FF:FF:FF:FF:FD', 'dupa3', 1),
         _Device('FF:FF:FF:FF:FF:FF', 'dupa4', 1),
     ]
 
@@ -120,11 +121,8 @@ def devices():
         mine = current_user.devices
         return render_template(
             "devices.html",
-            unclaimed=[],
-            recent=[],
+            unclaimed=the_devices,
             my_devices=the_devices,
-            users=[],
-            headcount=0,
             **common_vars_tpl
         )
 

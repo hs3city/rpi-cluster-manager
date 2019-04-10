@@ -39,6 +39,7 @@
     {% if current_user.is_authenticated %}
         <div class="table-responsive">
         <h2>My Devices</h2>
+
         <table class="table">
             <tr>
                 <th>MAC</th>
@@ -49,6 +50,20 @@
             </tr>
             {% for device in my_devices -%}
                 {{ device_row(device, owner=unclaim_btn(device.mac_address)) }}
+            {%- endfor %}
+        </table>
+        </div>
+        <h2>Unclaimed devices</h2>
+        <table class="table">
+            <tr>
+                <th>MAC</th>
+                <th>hostname</th>
+                <th>flags</th>
+                <th>ownership</th>
+                <th>last seen</th>
+            </tr>
+            {% for device in my_devices -%}
+                {{ device_row(device, owner=claim_btn(device.mac_address)) }}
             {%- endfor %}
         </table>
         </div>

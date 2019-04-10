@@ -102,8 +102,6 @@ def index():
         **common_vars_tpl
     )
 
-from collections import namedtuple
-# _Device = namedtuple("_Device", ['mac_address', 'hostname', 'owner'])
 
 class _Device:
     def __init__(self, mac_address, hostname, owner):
@@ -130,11 +128,8 @@ def devices():
         mine = current_user.devices
         return render_template(
             "devices.html",
-            unclaimed=[],
-            recent=[],
+            unclaimed=the_devices,
             my_devices=the_devices,
-            users=[],
-            headcount=0,
             **common_vars_tpl
         )
 

@@ -27,6 +27,7 @@
         <td>
             <a href="/device/{{ device.mac_address }}">{{ device.mac_address }}</a>
         </td>
+        <td>{{ device.ip }}</td>
         <td>{{ device.hostname }}</td>
         <td></td>
         <td>{{ owner }}</td>
@@ -42,6 +43,7 @@
         <table class="table">
             <tr>
                 <th>MAC</th>
+                <th>IP addr</th>
                 <th>hostname</th>
                 <th>flags</th>
                 <th>ownership</th>

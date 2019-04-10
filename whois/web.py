@@ -3,6 +3,7 @@ import json
 import logging
 import os
 from datetime import datetime
+from matka import network_utils
 
 from flask import (
     Flask,
@@ -102,19 +103,28 @@ def index():
     )
 
 from collections import namedtuple
-_Device = namedtuple("_Device", ['mac_address', 'hostname', 'owner'])
+# _Device = namedtuple("_Device", ['mac_address', 'hostname', 'owner'])
+
+class _Device:
+    def __init__(self, mac_address, hostname, owner):
+        self.mac_address = mac_address
+        self.hostname = hostname
+        self.owner = owner
+        self.ip = "*.*.*.*"
+
+    def __init__(self, network_scan_result):
+        self.mac_address = network_scan_result.mac
+        self.hostname = "-"
+        self.owner = "-"
+        self.ip = network_scan_result.ip
 
 # TODO change/remove
 @login_required
 @app.route("/devices")
 def devices():
-    the_devices = [
-        _Device('FF:FF:FF:FF:FF:FF', 'dupa0', 1),
-        _Device('FF:FF:FF:FF:FF:FF', 'dupa1', 1),
-        _Device('FF:FF:FF:FF:FF:FF', 'dupa2', 1),
-        _Device('FF:FF:FF:FF:FF:FF', 'dupa3', 1),
-        _Device('FF:FF:FF:FF:FF:FF', 'dupa4', 1),
-    ]
+    scan_result = network_utils.scan_network(interface=settings.lab_net_interface)
+    print(scan_result)
+    the_devices = [ _Device(r) for r in scan_result ]
 
     if current_user.is_authenticated:
         mine = current_user.devices

@@ -11,3 +11,5 @@ recent_time = {"minutes": 20}
 #ip_mask = "192.168.88.1-255"
 # TODO: better way for handling dev env
 ip_mask = "127.0.0.1"
+
+lab_net_interface = "wlp3s0"

@@ -27,6 +27,7 @@ flask-login = "*"
 python-dateutil = "*"
 peewee = "*"
 flask-cors = "*"
+requests = "*"
 
 
 [requires]

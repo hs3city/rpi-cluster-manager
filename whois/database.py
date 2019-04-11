@@ -75,8 +75,6 @@ class User(pw.Model):
 # TODO change
 class Device(pw.Model):
     mac_address = pw.FixedCharField(primary_key=True, unique=True, max_length=17)
-    hostname = pw.CharField(null=True)
-    last_seen = pw.DateTimeField()
     owner = pw.ForeignKeyField(
         User, backref="devices", column_name="user_id", null=True
     )
@@ -88,15 +86,13 @@ class Device(pw.Model):
         return self.mac_address
 
     @classmethod
-    def update_or_create(cls, mac_address, last_seen, hostname=None):
+    def update_or_create(cls, mac_address):
+        mac_address = mac_address.upper()
         try:
-            res = cls.create(
-                mac_address=mac_address, hostname=hostname, last_seen=last_seen
-            )
-
+            res = cls.create(mac_address=mac_address)
+            res.save()
         except pw.IntegrityError:
             res = cls.get(cls.mac_address == mac_address)
-            res.last_seen = last_seen
-            res.hostname = hostname
 
-        res.save()
+
+        return res

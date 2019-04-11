@@ -1,9 +1,9 @@
 __version__ = "1.2.3"
+import re
 import json
 import logging
 import os
 from datetime import datetime
-from matka import network_utils
 
 from flask import (
     Flask,
@@ -35,6 +35,10 @@ from whois.helpers import (
     in_space_required,
 )
 from whois.mikrotik import parse_mikrotik_data
+from matka import network_utils
+from matka.host_control import get_hostnames, get_forwarded_ports, set_hostname, remove_hostname
+from collections import namedtuple
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -47,6 +51,8 @@ login_manager.init_app(app)
 cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 common_vars_tpl = {"version": __version__}
+
+DevInfo = namedtuple('DevInfo', ['ip', 'mac_address', 'hostname', 'owner'])
 
 
 @login_manager.user_loader
@@ -90,134 +96,73 @@ def after_request(error):
 @app.route("/")
 def index():
     """Serve list of people in hs, show panel for logged users"""
-    recent = Device.get_recent(**settings.recent_time)
-    visible_devices = filter_hidden(recent)
-    users = filter_hidden(owners_from_devices(visible_devices))
 
     return render_template(
         "landing.html",
-        users=filter_anon_names(users),
-        headcount=len(users),
-        unknowncount=len(unclaimed_devices(recent)),
         **common_vars_tpl
     )
 
 
 class _Device:
-    def __init__(self, mac_address, hostname, owner):
-        self.mac_address = mac_address
-        self.hostname = hostname
-        self.owner = owner
-        self.ip = "*.*.*.*"
-
     def __init__(self, network_scan_result):
         self.mac_address = network_scan_result.mac
         self.hostname = "-"
         self.owner = "-"
         self.ip = network_scan_result.ip
 
+from hashlib import sha1
+import json
+
+
+def calculate_db_hash(dhcp_config, firewall_config):
+    hash = sha1(json.dumps([dhcp_config, firewall_config], sort_keys=True).encode())
+    return hash.hexdigest()
+
+
+def find_host_in_dhcp_cfg(cfg, mac):
+    try:
+        return next(filter(lambda section: section.get('mac', '') == mac, cfg))
+    except:
+        return ''
+
+
 # TODO change/remove
 @login_required
 @app.route("/devices")
 def devices():
     scan_result = network_utils.scan_network(interface=settings.lab_net_interface)
-    print(scan_result)
-    the_devices = [ _Device(r) for r in scan_result ]
 
-    if current_user.is_authenticated:
-        mine = current_user.devices
-        return render_template(
-            "devices.html",
-            unclaimed=the_devices,
-            my_devices=the_devices,
-            **common_vars_tpl
-        )
+    firewall_config = get_forwarded_ports(settings.router_login_info)
+    dhcp_config = get_hostnames(settings.router_login_info)
+    db_hash = calculate_db_hash(dhcp_config, firewall_config)
 
-# TODO change/remove
-@app.route("/api/now", methods=["GET"])
-def now_at_space():
-    """
-    Send list of people currently in HS as JSON, only registred people,
-    used by other services in HS,
-    requests should be from hs3.pl domain or from HSWAN
-    """
-    period = {**settings.recent_time}
+    unclaimed_devices = []
+    devices_in_network = []
+    mine = []
 
-    for key in ["days", "hours", "minutes"]:
-        if key in request.args:
-            period[key] = request.args.get(key, default=0, type=int)
+    for dev in scan_result:
+        devices_in_network.append(DevInfo(dev.ip, dev.mac.upper(), find_host_in_dhcp_cfg(dhcp_config, dev.mac), None))
+    
+    for processed_dev in devices_in_network:
+        claimed = False
+        for claimed_device in Device.select():
+            if claimed_device.mac_address == processed_dev.mac_address:
+                claimed = True
+                if getattr(processed_dev.owner,'get_id', lambda : None)() == current_user.get_id():
+                    mine.append(processed_dev)
+                    break
+        if not claimed:
+            unclaimed_devices.append(processed_dev)
 
-    devices = filter_hidden(Device.get_recent(**period))
-    users = filter_hidden(owners_from_devices(devices))
 
-    data = {
-        "users": sorted(map(str, filter_anon_names(users))),
-        "headcount": len(users),
-        "unknown_devices": len(unclaimed_devices(devices)),
-    }
-
-    app.logger.info("sending request for /api/now {}".format(data))
-
-    return jsonify(data)
-
-# TODO change/remove
-@app.route("/api/last_seen", methods=["POST"])
-def last_seen_devices():
-    """
-    Post last seen devices to database
-    :return: status code
-    """
-    if request.headers.getlist("X-Forwarded-For"):
-        ip_addr = request.headers.getlist("X-Forwarded-For")[0]
-        logger.info(
-            "forward from %s to %s",
-            request.remote_addr,
-            request.headers.getlist("X-Forwarded-For")[0],
-        )
-    else:
-        ip_addr = request.remote_addr
-
-    if any(ip_range(whitelist_addr, ip_addr) for whitelist_addr in settings.whitelist):
-        app.logger.info("request from whitelist: {}".format(ip_addr))
-
-        if request.headers.get("User-Agent") == "Mikrotik/6.x Fetch":
-            app.logger.info("got data from mikrotik")
-            data = json.loads(request.values.get("data", []))
-            parsed_data = parse_mikrotik_data(datetime.now(), data)
-        else:
-            app.logger.warning("bad request \n{}".format(request.headers))
-            return abort(400)
-
-        app.logger.info("parsed data, got {} devices".format(len(parsed_data)))
-
-        with db.atomic():
-            for dev in parsed_data:
-                Device.update_or_create(**dev)
-
-        app.logger.info("updated last seen devices")
-
-        return "OK", 200
-    else:
-        app.logger.warning("request from outside whitelist: {}".format(ip_addr))
-        return abort(403)
-
-# TODO remove - helper function
-def set_device_flags(device, new_flags):
-    if device.owner is not None and device.owner.get_id() != current_user.get_id():
-        app.logger.error("no permission for {}".format(current_user.username))
-        flash("No permission!".format(device.mac_address), "error")
-        return
-    device.is_hidden = "hidden" in new_flags
-    device.is_esp = "esp" in new_flags
-    device.is_infrastructure = "infrastructure" in new_flags
-    print(device.flags)
-    device.save()
-    app.logger.info(
-        "{} changed {} flags to {}".format(
-            current_user.username, device.mac_address, device.flags
-        )
+    mine = current_user.devices
+    return render_template(
+        "devices.html",
+        unclaimed=unclaimed_devices,
+        my_devices=mine,
+        db_state_hash=db_hash,
+        **common_vars_tpl
     )
-    flash("Flags set".format(device.mac_address), "info")
 
 # TODO change
 @app.route("/device/<mac_address>", methods=["GET", "POST"])
@@ -225,47 +170,63 @@ def set_device_flags(device, new_flags):
 @in_space_required()
 def device_view(mac_address):
     """Get info about device, claim device, release device"""
+    mac_address = mac_address.upper()
+    hostname = request.values.get('hostname','').lower()
+    if hostname:
+        if re.search(r"[^a-z0-9_]+", hostname):
+            flash('hostname contains not allowed chars')
+            return redirect('/devices')
+        hostname = "{}.lab.hs3.pl".format(hostname)
 
-    try:
-        device = Device.get(Device.mac_address == mac_address)
-    except Device.DoesNotExist as exc:
-        app.logger.error("{}".format(exc))
-        return abort(404)
+    firewall_config = get_forwarded_ports(settings.router_login_info)
+    dhcp_config = get_hostnames(settings.router_login_info)
+    db_hash = calculate_db_hash(dhcp_config, firewall_config)
+    devices = network_utils.scan_network(settings.lab_net_interface)
 
-    if request.method == "POST":
-        if request.values.get("action") == "claim":
-            claim_device(device)
+    if request.method == "POST" and request.values.get("action") == "claim":
+        if not hostname:
+            flash("hostname is either empty ")
+            return redirect('/devices')
 
-        elif request.values.get("action") == "unclaim":
-            unclaim_device(device)
-            set_device_flags(device, [])
+        if db_hash != request.values.get('db_state_hash'):
+            flash("Somethong has changed database state in the mean time, please try again."
+                  "Wrong db hash. Got {} , expectd {}".format(request.values.get('db_state_hash'), db_hash))
+            return redirect('/devices')
+        try:
+            device_status = next(filter(lambda dev: dev.mac.upper() == mac_address, devices))
+        except:
+            return abort(404)
+        set_hostname(settings.router_login_info, device_status.ip, device_status.mac,
+                     hostname)
 
-        elif request.values.get("flags"):
-            set_device_flags(device, request.form.getlist("flags"))
+        device = Device.create(mac_address=mac_address)
+        device.owner = current_user.get_id()
+        device.save()
+    elif request.method == "POST" and request.values.get('action') == 'change_hostname':
+        if db_hash != request.values.get('db_state_hash'):
+            flash("Somethong has changed database state in the mean time, please try again."
+                  "Wrong db hash. Got {} , expectd {}".format(request.values.get('db_state_hash'), db_hash))
+            return redirect('/devices')
+        device = current_user.devices.select().where(Device.mac_address == mac_address).execute()[0]
+        device_status = next(filter(lambda dev: dev.mac.upper() == mac_address, devices))
+        set_hostname(settings.router_login_info, device_status.ip, device_status.mac,
+                    hostname)
 
-    return render_template("device.html", device=device, **common_vars_tpl)
+        device = DevInfo(device_status.ip, device_status.mac, hostname, current_user)
+    elif request.method == "POST" and request.values.get('action') == 'unclaim':
+        device = current_user.devices.select().where(Device.mac_address == mac_address).execute()[0]
+        device.delete_instance()
+        hostname_cfg = next(filter(lambda hcfg: hcfg.get('mac', '').upper() == mac_address, dhcp_config))
+        remove_hostname(settings.router_login_info, hostname_cfg['name'])
+        flash("Host has been successfully unclaimed")
+        return redirect('/devices')
+    else:
+        device_status = next(filter(lambda dev: dev.mac.upper() == mac_address, devices))
+        device = Device.select().where(Device.mac_address == mac_address.upper()).execute()[0]
+        device = DevInfo(device_status.ip, device_status.mac, hostname, current_user)
 
-# TODO remove - helper function
-def claim_device(device):
-    if device.owner is not None:
-        app.logger.error("no permission for {}".format(current_user.username))
-        flash("No permission!".format(device.mac_address), "error")
-        return
-    device.owner = current_user.get_id()
-    device.save()
-    app.logger.info("{} claim {}".format(current_user.username, device.mac_address))
-    flash("Claimed {}!".format(device.mac_address), "success")
-
-# TODO remove - helper function
-def unclaim_device(device):
-    if device.owner is not None and device.owner.get_id() != current_user.get_id():
-        app.logger.error("no permission for {}".format(current_user.username))
-        flash("No permission!".format(device.mac_address), "error")
-        return
-    device.owner = None
-    device.save()
-    app.logger.info("{} unclaim {}".format(current_user.username, device.mac_address))
-    flash("Unclaimed {}!".format(device.mac_address), "info")
+    return render_template("device.html", device=device, **common_vars_tpl,
+           db_state_hash=db_hash)
 
 # TODO change
 @app.route("/register", methods=["GET", "POST"])

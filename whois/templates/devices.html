@@ -1,19 +1,18 @@
 {% extends "base.html" %}
+
 {% macro claim_btn(mac_address) %}
-    <form action="/device/{{ mac_address }}" method="post">
         <button type="submit" name="action" value="claim"
                 class="btn btn-sm btn-outline-primary">claim
         </button>
-    </form>
 {% endmacro %}
 {% macro unclaim_btn(mac_address) %}
-    <form action="/device/{{ mac_address }}" method="post">
         <button type="submit" name="action" value="unclaim"
                 class="btn btn-sm btn-outline-danger">unclaim
         </button>
-    </form>
+        <button type="submit" name="action" value="change_hostname"
+                class="btn btn-sm btn-outline-danger">change hostname
+        </button>
 {% endmacro %}
-
 {% macro user_wiki(user) -%}
     <a href="//wiki.hs3.pl/ludzie/{{ user.username }}">{{ user.username }}</a>
 {% endmacro %}
@@ -22,17 +21,17 @@
         <span class="badge badge-primary">{{ flag_name }}</span>
     {% endif %}
 {% endmacro %}
+
 {% macro device_row(device, owner='') -%}
-    <tr class="justify-content-center">
-        <td>
+    <div>
+        <form action="/device/{{ device.mac_address }}" method="post">
+            <input type="hidden" id="db_state_hash" name="db_state_hash" value="{{ db_state_hash }}">
             <a href="/device/{{ device.mac_address }}">{{ device.mac_address }}</a>
-        </td>
-        <td>{{ device.ip }}</td>
-        <td>{{ device.hostname }}</td>
-        <td></td>
-        <td>{{ owner }}</td>
-        <td></td>
-    </tr>
+            <span>{{ device.ip }}</span>
+            <input type="text" name="hostname" value="{{ device.hostname }}">
+            <span>{{ owner }}</span>
+        </form>
+    </div>
 {%- endmacro %}
 
 
@@ -40,34 +39,15 @@
     {% if current_user.is_authenticated %}
         <div class="table-responsive">
         <h2>My Devices</h2>
-
-        <table class="table">
-            <tr>
-                <th>MAC</th>
-                <th>IP addr</th>
-                <th>hostname</th>
-                <th>flags</th>
-                <th>ownership</th>
-                <th>last seen</th>
-            </tr>
             {% for device in my_devices -%}
                 {{ device_row(device, owner=unclaim_btn(device.mac_address)) }}
             {%- endfor %}
-        </table>
         </div>
+        <div>
         <h2>Unclaimed devices</h2>
-        <table class="table">
-            <tr>
-                <th>MAC</th>
-                <th>hostname</th>
-                <th>flags</th>
-                <th>ownership</th>
-                <th>last seen</th>
-            </tr>
-            {% for device in my_devices -%}
+            {% for device in unclaimed -%}
                 {{ device_row(device, owner=claim_btn(device.mac_address)) }}
             {%- endfor %}
-        </table>
         </div>
     {% endif %}
 

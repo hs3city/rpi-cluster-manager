@@ -13,3 +13,5 @@ recent_time = {"minutes": 20}
 ip_mask = "127.0.0.1"
 
 lab_net_interface = "wlp3s0"
+from matka.host_control import LoginInfo
+router_login_info = LoginInfo('http://192.168.1.1', 'root', 'xxxxxxx')

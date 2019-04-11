@@ -2,22 +2,8 @@
 {% block content %}
 
 <h2>Witaj w systemie obecności</h2>
-
-<p>
-    <span style="font-size: 3rem">aktualnie w HS {{ headcount }} {{ {0:'osób', 1:'osoba', 2:'osoby', 3:'osoby', 4:'osoby'}[headcount]|default('osób') }} </span>    
-</p>
 <p>
     <a href="/login">Zaloguj się</a> aby zająć urządzenie należące do ciebie. Powinno pojawić na liście za mniej więcej 15 minut po twoim przyjściu
 </p> 
-
-<h3>API</h3>
-<p>
-    Dostępne jest proste API udostępniające aktualne dane w JSON'nie
-    <br><kbd>https://whois.at.hs3.pl/api/now</kbd>
-</p>
-<p>
-    Można spytać o dowolny okres wstecz
-    <br><kbd>https://whois.at.hs3.pl/api/now?days=3&hours=2&minutes=13</kbd>
-</p>
 
 {% endblock %}
